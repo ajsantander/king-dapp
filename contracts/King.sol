@@ -12,7 +12,7 @@ contract King {
   }
 
   function play() public payable {
-    require(msg.value > prize, "Deposit must be greater than current prize.");
+    require(msg.value > prize, "Deposit must be greater than current prize");
     prize = msg.value;
     king.transfer(prize);
     king = msg.sender;
