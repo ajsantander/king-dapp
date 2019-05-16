@@ -14,7 +14,7 @@ contract("King", (accounts) => {
   beforeEach(async () => {
     contract = await King.new({
       from: accounts[0],
-      value: web3.utils.toWei("1", "ether")
+      value: web3.utils.toWei("1", "ether"),
     });
   });
 
@@ -63,9 +63,29 @@ contract("King", (accounts) => {
     const oldKingNewBalance = await getBalanceInEther(oldKing);
     const actualPrize = oldKingBalance + prizeInEther;
     assert.approximately(
-      oldKingNewBalance, 
-      actualPrize, 
+      oldKingNewBalance,
+      actualPrize,
       0.01
     );
   });
+
+  it('Should work the fallback function', async () =>{
+    await web3.eth.sendTransaction(({
+      from: accounts[0],
+      value: web3.utils.toWei("2", "ether")
+    }));
+    const king = await contract.king();
+    assert.equal(king, accounts[0]);
+  })
+
+  it('Should game over after one month', async () =>{
+    await shouldFail.reverting.withMessage(
+      contract.play({
+        from: accounts[1],
+        value: web3.utils.toWei("2", "ether"),
+        time: now + 2593300
+      }),
+      "Allow to play only before one month since creation"
+    );
+  })
 });
