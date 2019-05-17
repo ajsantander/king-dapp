@@ -1,5 +1,6 @@
 const King = artifacts.require("./King.sol");
-const { shouldFail } = require("openzeppelin-test-helpers");
+const KingAttack = artifacts.require("./KingAttack.sol");
+const { shouldFail, time } = require("openzeppelin-test-helpers");
 
 contract("King", (accounts) => {
 
@@ -69,38 +70,60 @@ contract("King", (accounts) => {
     );
   });
 
-  it('Should work the fallback function', async () =>{
-    await web3.eth.sendTransaction(({
-      from: accounts[0],
+  it('The fallback function should redirect to the play function', async () =>{
+    const tx = await web3.eth.sendTransaction(({
+      from: accounts[1],
+      to: contract.address,
       value: web3.utils.toWei("2", "ether")
     }));
     const king = await contract.king();
-    assert.equal(king, accounts[0]);
+    assert.equal(king, accounts[1]);
   });
 
-  it('Should game over after one month', async () =>{
-    const now = (new Date()).getTime() / 1000;
-    now = now + 2599000
+  it('Should not allow anyone to play after 1 month', async () =>{
+    const moreThanAMonth = 2599000;
+    await time.increase(moreThanAMonth);
     await shouldFail.reverting.withMessage(
       contract.play({
         from: accounts[1],
-        value: web3.utils.toWei("2", "ether"),
-        time: now
+        value: web3.utils.toWei("2", "ether")
       }),
       "Allow to play only before one month since creation"
     );
   });
 
+  it('Should not allow king to extract before one month', async () => {
+    await shouldFail.reverting.withMessage(
+      contract.kingExtract({
+        from: accounts[0]
+      }),
+      "Cannot extract until game is over"
+    );
+  });
+
   it('Should allow king to extract after one month', async () => {
-      const king = await contract.king();
-      const prizeInEther = await contract.prize();
-      const now = (new Date()).getTime() / 1000;
-      now = now + 2599000
-      await contract.play({
-        from: accounts[0],
-        value: web3.utils.toWei(`${prizeInEther}`, "ether"),
-        time: now
-      });
-        assert.equal(prizeInEther, 0);
+    const moreThanAMonth = 2599000;
+    await time.increase(moreThanAMonth);
+    await contract.kingExtract({
+      from: accounts[0]
+    });
+    const balance = await getBalanceInEther(contract.address);
+    assert.equal(balance, 0);
+  });
+
+  // Not actually a test, just trying to expose a vulnerability in King.sol.
+  it('Should be lockable by an attacker', async () => {
+
+    const attacker = await KingAttack.new();
+    await attacker.attack(contract.address, {
+      from: accounts[0],
+      value: web3.utils.toWei("2", "ether")
+    });
+    assert(await contract.king(), attacker);
+
+    await contract.play({
+      from: accounts[1],
+      value: web3.utils.toWei("3", "ether")
+    });
   });
 });
