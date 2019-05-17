@@ -76,16 +76,31 @@ contract("King", (accounts) => {
     }));
     const king = await contract.king();
     assert.equal(king, accounts[0]);
-  })
+  });
 
   it('Should game over after one month', async () =>{
+    const now = (new Date()).getTime() / 1000;
+    now = now + 2599000
     await shouldFail.reverting.withMessage(
       contract.play({
         from: accounts[1],
         value: web3.utils.toWei("2", "ether"),
-        time: now + 2593300
+        time: now
       }),
       "Allow to play only before one month since creation"
     );
-  })
+  });
+
+  it('Should allow king to extract after one month', async () => {
+      const king = await contract.king();
+      const prizeInEther = await contract.prize();
+      const now = (new Date()).getTime() / 1000;
+      now = now + 2599000
+      await contract.play({
+        from: accounts[0],
+        value: web3.utils.toWei(`${prizeInEther}`, "ether"),
+        time: now
+      });
+        assert.equal(prizeInEther, 0);
+  });
 });

@@ -14,7 +14,7 @@ contract King {
   }
 
   function play() public payable {
-    require(now <= time + 2592000, "Allow to play only before one month since creation");
+    require(time <= time + 2592000, "Allow to play only before one month since creation");
     require(msg.value > prize, "Deposit must be greater than current prize");
     prize = msg.value;
     king.transfer(prize);
